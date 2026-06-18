@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
+// 🤖 DYNAMIC BASE URL: Automatically switches between live cloud production and your local development server
+const currentIP = window.location.hostname;
+const isProduction = currentIP !== 'localhost' && currentIP !== '127.0.0.1';
+const BACKEND_URL = isProduction
+    ? 'https://rentmanagementsystem-production.up.railway.app'
+    : `http://${currentIP}:5000`;
+
 const MonthlyBilling = () => {
     const [billingMonth, setBillingMonth] = useState('2026-06');
     const [dueDate, setDueDate] = useState('2026-06-10');
@@ -41,7 +48,7 @@ const MonthlyBilling = () => {
         try {
             const token = localStorage.getItem('token');
 
-            const res = await fetch(`/api/v1/admin/billing-preview?month=${billingMonth}`, {
+            const res = await fetch(`${BACKEND_URL}/api/v1/admin/billing-preview?month=${billingMonth}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -84,7 +91,7 @@ const MonthlyBilling = () => {
             const token = localStorage.getItem('token');
             const readingIds = selectedItem.utilities_list?.map(u => u.reading_id) || [];
 
-            const response = await fetch('/api/v1/admin/generate-invoice', {
+            const response = await fetch(`${BACKEND_URL}/api/v1/admin/generate-invoice`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
