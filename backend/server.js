@@ -30,7 +30,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// 🔥 DYNAMIC CORS FILTER: Automatically approves localhost and any local 10.x.x.x or 192.168.x.x IP addresses
+// 🔥 DYNAMIC CORS FILTER: Automatically approves localhost, local IPs, AND your production frontend
 const dynamicOriginCheck = (origin, callback) => {
     if (!origin) return callback(null, true); // Allows Postman, mobile apps, or direct server hits
 
@@ -39,7 +39,10 @@ const dynamicOriginCheck = (origin, callback) => {
         /^http:\/\/10\.\d+\.\d+\.\d+/.test(origin) ||
         /^http:\/\/192\.168\.\d+\.\d+/.test(origin);
 
-    if (isLocal) {
+    // Explicitly allow your deployed frontend on Railway
+    const isProductionFrontend = origin === 'https://disciplined-truth-production-41bb.up.railway.app';
+
+    if (isLocal || isProductionFrontend) {
         callback(null, true);
     } else {
         callback(new Error('Not allowed by CORS'));
@@ -142,5 +145,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`[SERVER] Security layer activated. Running on port ${PORT}...`);
-    console.log(`[CORS] Chasing shifting IP addresses is officially over.`);
+    console.log(`[CORS] Live and local applications both successfully trusted.`);
 });
