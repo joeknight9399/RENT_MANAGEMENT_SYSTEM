@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from './config';
+
+// 🤖 DYNAMIC BASE URL: Automatically detects if you are live or running locally
+const currentIP = window.location.hostname;
+const isProduction = currentIP !== 'localhost' && currentIP !== '127.0.0.1';
+const BACKEND_URL = isProduction
+    ? 'https://rentmanagementsystem-production.up.railway.app'
+    : `http://${currentIP}:5000`;
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -20,7 +26,8 @@ function Login() {
         setAlert({ show: false, message: '', type: '' });
 
         try {
-            const response = await axios.post(`${API_URL}/api/v1/auth/login`, { email, password });
+            // Updated to use the smart BACKEND_URL variable
+            const response = await axios.post(`${BACKEND_URL}/api/v1/auth/login`, { email, password });
 
             if (response.data.status === 'Success') {
                 const token = response.data.token;
