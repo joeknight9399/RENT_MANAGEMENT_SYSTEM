@@ -30,6 +30,7 @@ import UnitsPage from './pages/UnitsPage';
 import StaffProvisioning from './pages/StaffProvisioning';
 import EstateOverviewPage from './pages/EstateOverviewPage';
 import BillingGeneration from './pages/admin/BillingGeneration';
+import FinanceDashboard from './components/FinanceDashboard';
 
 
 import TenantChatPage from './pages/TenantChatPage';
@@ -97,6 +98,7 @@ function App() {
               <Route path="billing-generation" element={<BillingGeneration />} />
               {/* NEW PASSWORD ROUTE */}
               <Route path="password" element={<UpdatePassword />} />
+              <Route path="finance" element={<FinanceDashboard />} />
 
               <Route path="settings" element={
                 <div className="p-12 text-slate-400 font-mono text-xs tracking-wider animate-pulse">

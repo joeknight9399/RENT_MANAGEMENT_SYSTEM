@@ -24,6 +24,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const utilityRoutes = require('./routes/utilityRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
+const financeRoutes = require('./routes/financeRoutes');
 
 dotenv.config();
 
@@ -112,6 +113,7 @@ app.use('/uploads', express.static('uploads'));
 // 5. API ROUTE GATEWAYS
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
+app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/leases', leaseRoutes);
 app.use('/api/v1/billing', billingRoutes);
 app.use('/api/v1/payments', paymentRoutes);
