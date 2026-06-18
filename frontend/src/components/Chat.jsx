@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 
 // Connect to your backend (adjust URL if different)
-const socket = io('http://localhost:5000');
+const socket = io('https://disciplined-truth-production-41bb.up.railway.app');
 
 const Chat = ({ conversationId }) => {
     const { user } = useAuth();
