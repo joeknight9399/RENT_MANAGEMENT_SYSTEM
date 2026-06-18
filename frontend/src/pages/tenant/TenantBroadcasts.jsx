@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
+// 🤖 DYNAMIC BASE URL: Automatically switches between live cloud production and your local development server
+const currentIP = window.location.hostname;
+const isProduction = currentIP !== 'localhost' && currentIP !== '127.0.0.1';
+const BACKEND_URL = isProduction
+    ? 'https://rentmanagementsystem-production.up.railway.app'
+    : `http://${currentIP}:5000`;
+
 const TenantBroadcasts = () => {
     const [broadcasts, setBroadcasts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -14,7 +21,8 @@ const TenantBroadcasts = () => {
                 setLoading(true);
                 setErrorMsg('');
 
-                const response = await fetch('/api/v1/tenant/broadcasts', {
+                // 🔥 Fixed: Prefixed the endpoint with our smart dynamic BACKEND_URL
+                const response = await fetch(`${BACKEND_URL}/api/v1/tenant/broadcasts`, {
                     signal: controller.signal,
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,
