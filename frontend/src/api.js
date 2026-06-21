@@ -7,8 +7,9 @@ const currentIP = window.location.hostname;
 const isProduction = currentIP !== 'localhost' && currentIP !== '127.0.0.1';
 
 // Automatically picks the correct cloud backend or local backend
+// 🌟 FIXED: Points to your active 'disciplined-truth' deployment node
 const baseURL = isProduction
-    ? 'https://rentmanagementsystem-production.up.railway.app/api/v1'
+    ? 'https://disciplined-truth-production-41bb.up.railway.app/api/v1'
     : `http://${currentIP}:5000/api/v1`;
 
 const api = axios.create({
