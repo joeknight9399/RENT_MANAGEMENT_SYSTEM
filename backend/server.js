@@ -31,7 +31,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// 🔥 DYNAMIC CORS FILTER: Automatically approves localhost, local IPs, AND your production frontend
+// 🔥 DYNAMIC CORS FILTER: Robust parsing for local environments and changing cloud instances
 const dynamicOriginCheck = (origin, callback) => {
     if (!origin) return callback(null, true); // Allows Postman, mobile apps, or direct server hits
 
@@ -40,12 +40,14 @@ const dynamicOriginCheck = (origin, callback) => {
         /^http:\/\/10\.\d+\.\d+\.\d+/.test(origin) ||
         /^http:\/\/192\.168\.\d+\.\d+/.test(origin);
 
-    // Explicitly allow your deployed frontend on Railway
-    const isProductionFrontend = origin === 'https://disciplined-truth-production-41bb.up.railway.app';
+    // Dynamic pattern matching to allow any production deployment or staging link from your frontend app
+    const isProductionFrontend =
+        (origin.includes('disciplined-truth-production') && origin.endsWith('.up.railway.app'));
 
     if (isLocal || isProductionFrontend) {
         callback(null, true);
     } else {
+        console.warn(`[CORS REJECTED] Source Origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
     }
 };
@@ -54,7 +56,7 @@ const dynamicOriginCheck = (origin, callback) => {
 app.use(helmet());
 app.use(cors({
     origin: dynamicOriginCheck,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
 
