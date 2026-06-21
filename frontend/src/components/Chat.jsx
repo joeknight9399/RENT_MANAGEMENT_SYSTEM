@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import io from 'socket.io-client';
+import api from '../api'; // 🌟 Migrated to your centralized, authenticated Axios client
 import { useAuth } from '../context/AuthContext';
 
-// Connect to your backend (adjust URL if different)
-const socket = io('https://disciplined-truth-production-41bb.up.railway.app');
+// Dynamic environment routing for WebSockets
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+// Target the root backend service container directly (omit the /api/v1 prefix for sockets)
+const SOCKET_URL = isProduction
+    ? 'https://rentmanagementsystem-production.up.railway.app'
+    : 'http://localhost:5000';
+
+const socket = io(SOCKET_URL, {
+    transports: ['websocket', 'polling'],
+    withCredentials: true
+});
 
 const Chat = ({ conversationId }) => {
     const { user } = useAuth();
@@ -19,10 +29,11 @@ const Chat = ({ conversationId }) => {
         // Join the specific conversation room
         socket.emit('joinRoom', conversationId);
 
-        // Fetch messages
+        // Fetch messages via unified API engine
         const fetchMessages = async () => {
             try {
-                const res = await axios.get(`/api/v1/chat/messages/${conversationId}`);
+                // baseURL handles the '/api/v1' prefix automatically
+                const res = await api.get(`/chat/messages/${conversationId}`);
                 setMessages(res.data);
             } catch (err) {
                 console.error("Error fetching messages:", err);
@@ -53,7 +64,8 @@ const Chat = ({ conversationId }) => {
         if (!newMessage.trim()) return;
 
         try {
-            await axios.post('/api/v1/chat/send', {
+            // Outbound payloads are authenticated automatically by the request interceptor
+            await api.post('/chat/send', {
                 conversationId,
                 content: newMessage
             });
@@ -70,9 +82,9 @@ const Chat = ({ conversationId }) => {
                 {messages.map((msg) => (
                     <div
                         key={msg.id}
-                        className={`flex flex-col ${msg.sender_id === user.id ? 'items-end' : 'items-start'}`}
+                        className={`flex flex-col ${msg.sender_id === user?.id ? 'items-end' : 'items-start'}`}
                     >
-                        <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${msg.sender_id === user.id
+                        <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${msg.sender_id === user?.id
                             ? 'bg-indigo-600 text-white rounded-br-none'
                             : 'bg-slate-900 text-slate-300 rounded-bl-none'
                             }`}>
