@@ -1,8 +1,6 @@
 // 📁 src/components/FinanceDashboard.jsx
 import React, { useState, useEffect } from 'react';
-// 🌟 IMPORT YOUR CUSTOM AXIOS INSTANCE
-// TODO: Adjust the relative path below to point exactly to where your api.js lives
-import api from '../api';
+import api from '../api'; // Maps to frontend/src/api.js
 
 const FinanceDashboard = () => {
     const [summary, setSummary] = useState(null);
@@ -17,14 +15,11 @@ const FinanceDashboard = () => {
             setLoading(true);
             setError(null);
             try {
-                // 🌟 Since your api.js baseURL already ends with '/api/v1', 
-                // we only need to specify the remaining endpoint paths here.
-
-                // 1. Fetch Top Stat Cards Data
+                // 1. Fetch Top Metric Aggregates 
                 const summaryRes = await api.get(`/finance/summary?month=${selectedMonth}`);
-                const summaryData = summaryRes.data; // Axios automatically parses JSON into .data
+                const summaryData = summaryRes.data;
 
-                // 2. Fetch Detailed Ledger Data (Apply status filter conditionally)
+                // 2. Fetch Granular Ledger Matrix rows (Apply status filter conditionally)
                 const statusParam = activeTab !== 'All' ? `&status=${activeTab}` : '';
                 const ledgerRes = await api.get(`/finance/ledger?month=${selectedMonth}${statusParam}`);
                 const ledgerData = ledgerRes.data;
@@ -36,7 +31,7 @@ const FinanceDashboard = () => {
                     throw new Error('Failed to retrieve full financial data rows');
                 }
             } catch (err) {
-                console.error(err);
+                console.error('Ledger Fetch Error:', err);
                 setError('Error connecting to root operational database node layers.');
             } finally {
                 setLoading(false);
@@ -46,8 +41,21 @@ const FinanceDashboard = () => {
         fetchFinanceData();
     }, [selectedMonth, activeTab]);
 
-    if (loading) return <div className="p-8 text-center text-slate-400 font-medium">Loading ledger records context...</div>;
-    if (error) return <div className="p-8 text-center text-red-400 font-medium">{error}</div>;
+    if (loading) {
+        return (
+            <div className="p-8 text-center text-slate-400 font-medium tracking-wide">
+                Loading ledger records context...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-8 text-center text-red-400 font-medium tracking-wide border border-red-500/10 bg-red-500/5 rounded-2xl">
+                {error}
+            </div>
+        );
+    }
 
     const metrics = summary?.revenue_metrics;
     const breakdown = summary?.status_breakdown;
@@ -55,7 +63,7 @@ const FinanceDashboard = () => {
     return (
         <div className="space-y-6 text-slate-100">
 
-            {/* Sub Header Content Container */}
+            {/* ─── HEADER FRAME ─── */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/60 pb-5 gap-4">
                 <div>
                     <h2 className="text-xl font-bold tracking-tight text-white">Collections Ledger Matrix</h2>
@@ -73,40 +81,40 @@ const FinanceDashboard = () => {
                 </div>
             </div>
 
-            {/* 1. Metric Node Cards Row */}
+            {/* ─── METRIC CARDS MATRIX ─── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800/80 shadow-md">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Expected Yield Gross</p>
                     <h3 className="text-xl font-black text-slate-200 mt-1">
-                        KES {metrics?.expected_total_revenue?.toLocaleString()}
+                        KES {metrics?.expected_total_revenue?.toLocaleString() || '0'}
                     </h3>
                 </div>
 
                 <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800/80 border-l-2 border-l-emerald-500 shadow-md">
                     <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Settled Liquid Cash</p>
                     <h3 className="text-xl font-black text-emerald-400 mt-1">
-                        KES {metrics?.actual_cash_collected?.toLocaleString()}
+                        KES {metrics?.actual_cash_collected?.toLocaleString() || '0'}
                     </h3>
                 </div>
 
                 <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800/80 border-l-2 border-l-cyan-500 shadow-md">
                     <p className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Outstanding Float Delta</p>
                     <h3 className="text-xl font-black text-cyan-400 mt-1">
-                        KES {metrics?.total_outstanding_balance?.toLocaleString()}
+                        KES {metrics?.total_outstanding_balance?.toLocaleString() || '0'}
                     </h3>
                 </div>
             </div>
 
-            {/* 2. Main Tabulated Interactive Grid Component */}
+            {/* ─── DATA TABLE CONTROL GRID ─── */}
             <div className="bg-slate-900 rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl">
 
                 {/* Navigation Tabs Header */}
-                <div className="flex border-b border-slate-800/60 bg-slate-950/40 px-4 pt-3 gap-2">
+                <div className="flex border-b border-slate-800/60 bg-slate-950/40 px-4 pt-3 gap-2 overflow-x-auto scrollbar-none">
                     {['All', 'Paid', 'Unpaid', 'Partially_Paid'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2 text-xs font-semibold rounded-t-xl transition-all duration-150 ${activeTab === tab
+                            className={`px-4 py-2 text-xs font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap ${activeTab === tab
                                 ? 'bg-slate-900 text-cyan-400 border border-b-slate-900 border-slate-800/80'
                                 : 'text-slate-400 hover:text-slate-200'
                                 }`}
@@ -146,8 +154,12 @@ const FinanceDashboard = () => {
                                         <td className="px-6 py-4 font-bold text-white">{item.room_number}</td>
                                         <td className="px-6 py-4 font-medium text-slate-200">{item.tenant_name}</td>
                                         <td className="px-6 py-4 text-slate-400 font-mono">{item.tenant_phone}</td>
-                                        <td className="px-6 py-4 text-right font-semibold">KES {parseFloat(item.total_owed).toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-right text-emerald-400 font-semibold">KES {parseFloat(item.total_paid).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-right font-semibold">
+                                            KES {parseFloat(item.total_owed).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-emerald-400 font-semibold">
+                                            KES {parseFloat(item.total_paid).toLocaleString()}
+                                        </td>
                                         <td className="px-6 py-4 text-right text-cyan-400 font-semibold">
                                             KES {parseFloat(item.remaining_balance).toLocaleString()}
                                         </td>
