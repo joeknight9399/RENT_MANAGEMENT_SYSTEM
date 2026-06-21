@@ -1,183 +1,158 @@
-// 📁 src/components/FinanceDashboard.jsx
-import React, { useState, useEffect } from 'react';
-import api from '../api'; // Maps to frontend/src/api.js
+import React, { useState, useEffect, useCallback } from 'react';
+import api from '../api'; // 🌟 Points directly to your dynamic Axios engine
 
 const FinanceDashboard = () => {
+    const [selectedMonth, setSelectedMonth] = useState(() => {
+        const today = new Date();
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    });
+
     const [summary, setSummary] = useState(null);
-    const [ledger, setLedger] = useState([]);
-    const [activeTab, setActiveTab] = useState('All');
-    const [selectedMonth, setSelectedMonth] = useState('2026-06');
+    const [ledgerMatrix, setLedgerMatrix] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchFinanceData = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // 1. Fetch Top Metric Aggregates 
-                const summaryRes = await api.get(`/finance/summary?month=${selectedMonth}`);
-                const summaryData = summaryRes.data;
+    // Hardened fetch operation utilizing the unified Axios client
+    const fetchFinanceData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Axios prepends baseURL, appends authorization headers, and parses JSON automatically
+            const response = await api.get(`/finance/summary?month=${selectedMonth}`);
 
-                // 2. Fetch Granular Ledger Matrix rows (Apply status filter conditionally)
-                const statusParam = activeTab !== 'All' ? `&status=${activeTab}` : '';
-                const ledgerRes = await api.get(`/finance/ledger?month=${selectedMonth}${statusParam}`);
-                const ledgerData = ledgerRes.data;
+            // Axios nests the server payload directly inside the data key
+            const serverPayload = response.data;
 
-                if (summaryData.status === 'Success' && ledgerData.status === 'Success') {
-                    setSummary(summaryData.data);
-                    setLedger(ledgerData.data);
-                } else {
-                    throw new Error('Failed to retrieve full financial data rows');
-                }
-            } catch (err) {
-                console.error('Ledger Fetch Error:', err);
-                setError('Error connecting to root operational database node layers.');
-            } finally {
-                setLoading(false);
+            if (serverPayload && serverPayload.status === 'Success') {
+                setSummary(serverPayload.data?.summary || null);
+                setLedgerMatrix(serverPayload.data?.ledger || []);
+            } else {
+                setSummary(null);
+                setLedgerMatrix([]);
+                setError('Received unexpected operational matrix format from backend node.');
             }
-        };
+        } catch (err) {
+            console.error('Ledger Fetch Error:', err);
 
+            // Defensive check to handle raw HTML fallbacks elegantly
+            if (err.response && typeof err.response.data === 'string' && err.response.data.includes('<!doctype')) {
+                setError('Error connecting to root operational database node layers (HTML Fallback Error).');
+            } else {
+                setError(err.response?.data?.message || 'Network connection bottleneck detected. Please try again.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedMonth]);
+
+    useEffect(() => {
         fetchFinanceData();
-    }, [selectedMonth, activeTab]);
-
-    if (loading) {
-        return (
-            <div className="p-8 text-center text-slate-400 font-medium tracking-wide">
-                Loading ledger records context...
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="p-8 text-center text-red-400 font-medium tracking-wide border border-red-500/10 bg-red-500/5 rounded-2xl">
-                {error}
-            </div>
-        );
-    }
-
-    const metrics = summary?.revenue_metrics;
-    const breakdown = summary?.status_breakdown;
+    }, [fetchFinanceData]);
 
     return (
-        <div className="space-y-6 text-slate-100">
-
-            {/* ─── HEADER FRAME ─── */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/60 pb-5 gap-4">
+        <div style={{ padding: '24px', fontFamily: 'sans-serif', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+            {/* Header Section */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div>
-                    <h2 className="text-xl font-bold tracking-tight text-white">Collections Ledger Matrix</h2>
-                    <p className="text-xs text-slate-400 mt-1">Real-time cryptographic audit trail of M-Pesa client settlements</p>
+                    <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Financial Metrics Hub</h1>
+                    <p style={{ color: '#6b7280', margin: '4px 0 0 0' }}>Real-time collections ledger matrix and billing overview</p>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Billing Frame:</label>
+                <div>
+                    <label htmlFor="month-picker" style={{ marginRight: '8px', fontWeight: '500', color: '#374151' }}>Operational Month:</label>
                     <input
+                        id="month-picker"
                         type="month"
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="border border-slate-800 bg-slate-900 rounded-xl px-3 py-1.5 text-xs text-cyan-400 shadow-inner focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                        style={{ padding: '8px', borderRadius: '6px', border: '1px solid #d1d5db', outline: 'none' }}
                     />
                 </div>
             </div>
 
-            {/* ─── METRIC CARDS MATRIX ─── */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800/80 shadow-md">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Expected Yield Gross</p>
-                    <h3 className="text-xl font-black text-slate-200 mt-1">
-                        KES {metrics?.expected_total_revenue?.toLocaleString() || '0'}
-                    </h3>
+            {/* Error Banner */}
+            {error && (
+                <div style={{ padding: '16px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', color: '#991b1b', marginBottom: '24px' }}>
+                    <p style={{ margin: 0, fontWeight: '600' }}>⚠️ System Alert</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '14px' }}>{error}</p>
                 </div>
+            )}
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800/80 border-l-2 border-l-emerald-500 shadow-md">
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Settled Liquid Cash</p>
-                    <h3 className="text-xl font-black text-emerald-400 mt-1">
-                        KES {metrics?.actual_cash_collected?.toLocaleString() || '0'}
-                    </h3>
+            {/* Loader State */}
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', color: '#4b5563' }}>
+                    <p style={{ fontWeight: '500' }}>Compiling network ledger metrics...</p>
                 </div>
+            ) : (
+                <>
+                    {/* Financial Summary Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0, uppercase: 'true' }}>Expected Invoicing</p>
+                            <h3 style={{ fontSize: '28px', margin: '8px 0 0 0', color: '#111827' }}>KES {summary?.totalExpected?.toLocaleString() || 0}</h3>
+                        </div>
+                        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', borderLeft: '4px solid #10b981' }}>
+                            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Total Collected</p>
+                            <h3 style={{ fontSize: '28px', margin: '8px 0 0 0', color: '#10b981' }}>KES {summary?.totalCollected?.toLocaleString() || 0}</h3>
+                        </div>
+                        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', borderLeft: '4px solid #ef4444' }}>
+                            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Outstanding Arrears</p>
+                            <h3 style={{ fontSize: '28px', margin: '8px 0 0 0', color: '#ef4444' }}>KES {summary?.totalPending?.toLocaleString() || 0}</h3>
+                        </div>
+                    </div>
 
-                <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800/80 border-l-2 border-l-cyan-500 shadow-md">
-                    <p className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest">Outstanding Float Delta</p>
-                    <h3 className="text-xl font-black text-cyan-400 mt-1">
-                        KES {metrics?.total_outstanding_balance?.toLocaleString() || '0'}
-                    </h3>
-                </div>
-            </div>
-
-            {/* ─── DATA TABLE CONTROL GRID ─── */}
-            <div className="bg-slate-900 rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl">
-
-                {/* Navigation Tabs Header */}
-                <div className="flex border-b border-slate-800/60 bg-slate-950/40 px-4 pt-3 gap-2 overflow-x-auto scrollbar-none">
-                    {['All', 'Paid', 'Unpaid', 'Partially_Paid'].map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2 text-xs font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap ${activeTab === tab
-                                ? 'bg-slate-900 text-cyan-400 border border-b-slate-900 border-slate-800/80'
-                                : 'text-slate-400 hover:text-slate-200'
-                                }`}
-                        >
-                            {tab.replace('_', ' ')}
-                            <span className="ml-2 text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">
-                                {tab === 'All' ? ledger.length : breakdown?.[tab]?.count || 0}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Data Grid Table Wrapper */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-950/20 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800/40">
-                                <th className="px-6 py-4.5">Room</th>
-                                <th className="px-6 py-4.5">Tenant identity</th>
-                                <th className="px-6 py-4.5">Contact Node</th>
-                                <th className="px-6 py-4.5 text-right">Target Due</th>
-                                <th className="px-6 py-4.5 text-right">Settled Amount</th>
-                                <th className="px-6 py-4.5 text-right">Delta Balance</th>
-                                <th className="px-6 py-4.5 text-center">Status Matrix</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/40 text-xs text-slate-300">
-                            {ledger.length === 0 ? (
-                                <tr>
-                                    <td colSpan="7" className="text-center py-10 text-slate-500 font-medium">
-                                        No active invoice contexts linked within this filter branch.
-                                    </td>
-                                </tr>
-                            ) : (
-                                ledger.map((item) => (
-                                    <tr key={item.invoice_id} className="hover:bg-slate-850/40 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-white">{item.room_number}</td>
-                                        <td className="px-6 py-4 font-medium text-slate-200">{item.tenant_name}</td>
-                                        <td className="px-6 py-4 text-slate-400 font-mono">{item.tenant_phone}</td>
-                                        <td className="px-6 py-4 text-right font-semibold">
-                                            KES {parseFloat(item.total_owed).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-emerald-400 font-semibold">
-                                            KES {parseFloat(item.total_paid).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-cyan-400 font-semibold">
-                                            KES {parseFloat(item.remaining_balance).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase border ${item.invoice_status === 'Paid' ? 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20' :
-                                                item.invoice_status === 'Partially_Paid' ? 'bg-amber-500/5 text-amber-400 border-amber-500/20' :
-                                                    'bg-red-500/5 text-red-400 border-red-500/20'
-                                                }`}>
-                                                {item.invoice_status.replace('_', ' ')}
-                                            </span>
-                                        </td>
+                    {/* Collection Ledger Matrix Grid */}
+                    <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}>
+                            <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', margin: 0 }}>Collection Ledger Matrix</h2>
+                        </div>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                                        <th style={{ padding: '12px 20px', color: '#4b5563', fontSize: '13px', fontWeight: '600' }}>Property Node</th>
+                                        <th style={{ padding: '12px 20px', color: '#4b5563', fontSize: '13px', fontWeight: '600' }}>Unit</th>
+                                        <th style={{ padding: '12px 20px', color: '#4b5563', fontSize: '13px', fontWeight: '600' }}>Tenant Structural Index</th>
+                                        <th style={{ padding: '12px 20px', color: '#4b5563', fontSize: '13px', fontWeight: '600' }}>Billed Amount</th>
+                                        <th style={{ padding: '12px 20px', color: '#4b5563', fontSize: '13px', fontWeight: '600' }}>Paid Amount</th>
+                                        <th style={{ padding: '12px 20px', color: '#4b5563', fontSize: '13px', fontWeight: '600' }}>Ledger Status</th>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                </thead>
+                                <tbody>
+                                    {ledgerMatrix.length > 0 ? (
+                                        ledgerMatrix.map((record, index) => (
+                                            <tr key={record.id || index} style={{ borderBottom: '1px solid #f3f4f6', transition: 'background-color 0.2s' }}>
+                                                <td style={{ padding: '16px 20px', color: '#111827', fontSize: '14px', fontWeight: '500' }}>{record.propertyName}</td>
+                                                <td style={{ padding: '16px 20px', color: '#4b5563', fontSize: '14px' }}>{record.unitName}</td>
+                                                <td style={{ padding: '16px 20px', color: '#4b5563', fontSize: '14px' }}>{record.tenantName || 'Vacant Matrix Index'}</td>
+                                                <td style={{ padding: '16px 20px', color: '#111827', fontSize: '14px' }}>KES {record.amountBilled?.toLocaleString()}</td>
+                                                <td style={{ padding: '16px 20px', color: '#111827', fontSize: '14px' }}>KES {record.amountPaid?.toLocaleString()}</td>
+                                                <td style={{ padding: '16px 20px', fontSize: '14px' }}>
+                                                    <span style={{
+                                                        padding: '4px 8px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '12px',
+                                                        fontWeight: '500',
+                                                        backgroundColor: record.status === 'Paid' ? '#d1fae5' : record.status === 'Partial' ? '#fef3c7' : '#fee2e2',
+                                                        color: record.status === 'Paid' ? '#065f46' : record.status === 'Partial' ? '#92400e' : '#991b1b'
+                                                    }}>
+                                                        {record.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" style={{ padding: '32px 20px', textCol: '#6b7280', fontSize: '14px', textAlign: 'center' }}>
+                                                No financial ledger transactions maps found for the specified operational window.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

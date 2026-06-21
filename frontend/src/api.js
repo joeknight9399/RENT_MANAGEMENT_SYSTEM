@@ -1,32 +1,33 @@
 import axios from 'axios';
 
-const currentIP = window.location.hostname;
+// Detect if the app is running live or locally
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 
-// Checks if the app is running live on Railway or locally on your machine
-const isProduction = currentIP !== 'localhost' && currentIP !== '127.0.0.1';
-
+// 🌟 Route cleanly to your true Express backend service container
 const baseURL = isProduction
     ? 'https://rentmanagementsystem-production.up.railway.app/api/v1'
-    : `http://${currentIP}:5000/api/v1`;
+    : 'http://localhost:5000/api/v1';
 
 const api = axios.create({
-    baseURL: baseURL,
-    withCredentials: true // Crucial for passing secure headers/cookies through CORS safely
-});
-
-// Interceptor: Adds the token to EVERY request automatically
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    } else {
-        console.warn('API Warning: No token found in localStorage!');
+    baseURL,
+    timeout: 15000,
+    headers: {
+        'Content-Type': 'application/json'
     }
-
-    return config;
-}, (error) => {
-    return Promise.reject(error);
 });
+
+// Hardened Interceptor Layer: Automatically bakes the token into every outbound request
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 export default api;
